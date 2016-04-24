@@ -1,0 +1,8 @@
+[package]
+name = "rtfmt"
+version = "0.1.0"
+authors = ["Evgeny Safronov <division494@gmail.com>"]
+
+[dependencies]
+peg = "0.3.0"
+serde_json = "0.7.0"
