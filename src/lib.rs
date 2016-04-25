@@ -41,7 +41,7 @@ text_char -> char
     / "}}" { CLOSED_BRACE }
     / [^{}] { match_str.chars().next().unwrap() }
 format -> Token
-    = "{" name:(name ++ ".") "}" { Token::Placeholder(name) }
+    = "{" keys:(name ++ ".") "}" { Token::Placeholder(keys) }
 name -> Key
     = [0-9]+ { Key::Id(match_str.parse().unwrap()) }
     / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str.into()) }
