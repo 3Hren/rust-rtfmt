@@ -18,8 +18,8 @@ pub use self::grammar::{expression, ParseError};
 // parameter := integer '$'
 
 
-const OPENED_BRACE: char = '{';
-const CLOSED_BRACE: char = '}';
+const OPENED_BRACE: &'static str = "{";
+const CLOSED_BRACE: &'static str = "}";
 
 peg! grammar(r#"
 use super::Key;
@@ -28,44 +28,48 @@ use super::OPENED_BRACE;
 use super::CLOSED_BRACE;
 
 #[pub]
-expression -> Vec<Token>
+expression -> Vec<Token<'input>>
     = (format / text)+
-text -> Token
-    = result:text_char+ { Token::Literal(result.into_iter().collect()) }
-text_char -> char
-    = "{{" { OPENED_BRACE }
-    / "}}" { CLOSED_BRACE }
-    / [^{}] { match_str.chars().next().unwrap() }
-format -> Token
-    = "{" keys:(name ++ ".") "}" { Token::Placeholder(keys) }
-name -> Key
-    = [0-9]+ { Key::Id(match_str.parse().unwrap()) }
-    / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str.into()) }
+text -> Token<'input>
+    = "{{" { Token::Literal(OPENED_BRACE) }
+    / "}}" { Token::Literal(CLOSED_BRACE) }
+    / [^{}]+ { Token::Literal(match_str) }
+format -> Token<'input>
+    = "{" keys:(name ++ ".") "}" { Token::Placeholder(&match_str[1..match_str.len() - 1], keys) }
+name -> Key<'input>
+    = [0-9]+ { Key::Id(match_str.parse().expect("expect number")) }
+    / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str) }
 "#);
 
 // TODO: Format spec.
-// TODO: Error cases.
-// TODO: Remove all unwraps().
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Key {
+pub enum Key<'a> {
     Id(usize),
-    Name(String),
+    Name(&'a str),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Token {
-    Literal(String),
-    Placeholder(Vec<Key>),
+pub enum Token<'a> {
+    Literal(&'a str),
+    Placeholder(&'a str, Vec<Key<'a>>),
 }
 
-pub struct Generator {
-    tokens: Vec<Token>,
+pub struct Generator<'a> {
+    pattern: &'a str,
+    tokens: Vec<Token<'a>>,
 }
 
 #[derive(Debug)]
 pub enum Error<'a> {
-    KeyNotFound(&'a Vec<Key>),
+    KeyNotFound(&'a str),
+    Serialization(serde_json::Error),
+}
+
+impl<'a> From<serde_json::Error> for Error<'a> {
+    fn from(err: serde_json::Error) -> Error<'a> {
+        Error::Serialization(err)
+    }
 }
 
 fn find<'r>(value: &'r Value, key: &Key) -> Option<&'r Value> {
@@ -81,13 +85,18 @@ fn find<'r>(value: &'r Value, key: &Key) -> Option<&'r Value> {
     }
 }
 
-impl Generator {
-    pub fn new(pattern: &str) -> Result<Generator, ParseError> {
+impl<'a> Generator<'a> {
+    pub fn new(pattern: &'a str) -> Result<Generator<'a>, ParseError> {
         let result = Generator {
+            pattern: pattern,
             tokens: expression(pattern)?,
         };
 
         Ok(result)
+    }
+
+    pub fn pattern(&self) -> &str {
+        self.pattern
     }
 
     pub fn consume(&self, val: &Value) -> Result<String, Error> {
@@ -96,20 +105,20 @@ impl Generator {
         for token in &self.tokens {
             match *token {
                 Token::Literal(ref literal) => res.push_str(&literal[..]),
-                Token::Placeholder(ref format) => {
+                Token::Placeholder(ref name, ref keys) => {
                     let mut cur = val;
-                    for key in format {
+                    for key in keys {
                         match find(&cur, key) {
                             Some(val) => {
                                 cur = val;
                             }
                             None => {
-                                return Err(Error::KeyNotFound(format));
+                                return Err(Error::KeyNotFound(name));
                             }
                         }
                     }
 
-                    res.push_str(&serde_json::to_string(&cur).unwrap()[..]);
+                    res.push_str(&serde_json::to_string(&cur)?[..]);
                 }
             }
         }
@@ -126,14 +135,14 @@ mod test {
     fn literal_ast() {
         let generator = Generator::new("hello").unwrap();
 
-        assert_eq!(vec![Token::Literal("hello".into())], generator.tokens);
+        assert_eq!(vec![Token::Literal("hello")], generator.tokens);
     }
 
     #[test]
     fn placeholder_ast() {
         let generator = Generator::new("{hello}").unwrap();
 
-        let expected = vec![Token::Placeholder(vec![Key::Name("hello".into())])];
+        let expected = vec![Token::Placeholder("hello", vec![Key::Name("hello")])];
         assert_eq!(expected, generator.tokens);
     }
 }

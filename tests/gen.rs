@@ -8,6 +8,11 @@ use std::collections::BTreeMap;
 use rtfmt::{Generator, Value};
 
 #[test]
+fn pattern() {
+    assert_eq!("Hello, {name}!", Generator::new("Hello, {name}!").unwrap().pattern());
+}
+
+#[test]
 fn literal() {
     assert_eq!("hello", &Generator::new("hello").unwrap().consume(&Value::Null).unwrap());
 }
