@@ -95,18 +95,18 @@ impl Generator {
         Ok(result)
     }
 
-    pub fn consume(&self, value: &Value) -> Result<String, Error> {
-        let mut result = String::new();
+    pub fn consume(&self, val: &Value) -> Result<String, Error> {
+        let mut res = String::new();
 
         for token in &self.tokens {
             match *token {
-                Token::Literal(ref literal) => result.push_str(&literal[..]),
+                Token::Literal(ref literal) => res.push_str(&literal[..]),
                 Token::Placeholder(ref format) => {
-                    let mut current = value;
+                    let mut cur = val;
                     for key in format {
-                        match find(&current, key) {
-                            Some(value) => {
-                                current = value;
+                        match find(&cur, key) {
+                            Some(val) => {
+                                cur = val;
                             }
                             None => {
                                 return Err(Error::KeyNotFound(format));
@@ -114,11 +114,12 @@ impl Generator {
                         }
                     }
 
-                    result.push_str(&serde_json::to_string(&current).unwrap()[..]);
+                    res.push_str(&serde_json::to_string(&cur).unwrap()[..]);
                 }
             }
         }
-        Ok(result)
+
+        Ok(res)
     }
 }
 
