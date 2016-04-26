@@ -51,7 +51,6 @@ name -> Key
 // TODO: Error cases.
 // TODO: Remove all unwraps().
 // TODO: Refactoring and symbol visibility.
-// TODO: Benchmarking.
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Key {
@@ -70,8 +69,8 @@ pub struct Generator {
 }
 
 #[derive(Debug)]
-pub enum Error {
-    __Unknown,
+pub enum Error<'a> {
+    KeyNotFound(&'a Vec<Key>),
 }
 
 fn find<'r>(value: &'r Value, key: &Key) -> Option<&'r Value> {
@@ -106,8 +105,12 @@ impl Generator {
                     let mut current = value;
                     for key in format {
                         match find(&current, key) {
-                            Some(value) => { current = value; }
-                            None => unimplemented!(),
+                            Some(value) => {
+                                current = value;
+                            }
+                            None => {
+                                return Err(Error::KeyNotFound(format));
+                            }
                         }
                     }
 
