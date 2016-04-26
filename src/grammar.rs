@@ -80,7 +80,7 @@ fn find<'r>(value: &'r Value, key: &Key) -> Option<&'r Value> {
                 None
             }
         }
-        Key::Name(ref name) => value.find(name),
+        Key::Name(name) => value.find(name),
     }
 }
 
@@ -103,8 +103,8 @@ impl<'a> Generator<'a> {
 
         for token in &self.tokens {
             match *token {
-                Token::Literal(ref literal) => res.push_str(&literal[..]),
-                Token::Placeholder(ref name, ref keys) => {
+                Token::Literal(literal) => res.push_str(literal),
+                Token::Placeholder(name, ref keys) => {
                     let mut cur = val;
                     for key in keys {
                         match find(&cur, key) {
