@@ -22,10 +22,7 @@ const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";
 
 peg! grammar(r#"
-use super::Key;
-use super::Token;
-use super::OPENED_BRACE;
-use super::CLOSED_BRACE;
+use super::{Key, Token, OPENED_BRACE, CLOSED_BRACE};
 
 #[pub]
 expression -> Vec<Token<'input>>
@@ -35,7 +32,9 @@ text -> Token<'input>
     / "}}" { Token::Literal(CLOSED_BRACE) }
     / [^{}]+ { Token::Literal(match_str) }
 format -> Token<'input>
-    = "{" keys:(name ++ ".") "}" { Token::Placeholder(&match_str[1..match_str.len() - 1], keys) }
+    = "{" keys:(name ++ ".") "}" {
+        Token::Placeholder(&match_str[1..match_str.len() - 1], keys)
+    }
 name -> Key<'input>
     = [0-9]+ { Key::Id(match_str.parse().expect("expect number")) }
     / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str) }
