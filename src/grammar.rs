@@ -17,7 +17,6 @@ pub use self::grammar::{expression, ParseError};
 // count := parameter | integer
 // parameter := integer '$'
 
-
 const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";
 
